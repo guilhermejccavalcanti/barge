@@ -18,85 +18,75 @@ package org.robotninjas.barge.state;
 import org.junit.Before;
 import org.junit.Test;
 import org.robotninjas.barge.proto.RaftProto;
-
 import static org.mockito.Mockito.*;
-import static org.robotninjas.barge.state.RaftStateContext.StateType.*;
+import static org.robotninjas.barge.state.Raft.StateType.*;
 
 public class RaftStateContextTest {
 
-  private final StateFactory factory = mock(StateFactory.class);
+    private final StateFactory factory = mock(StateFactory.class);
 
-  private final State start = mock(State.class);
-  private final State follower = mock(State.class);
-  private final State candidate = mock(State.class);
+    private final State start = mock(State.class);
 
-  private final StateTransitionListener transitionListener = mock(StateTransitionListener.class);
+    private final State follower = mock(State.class);
 
-  private final RaftStateContext context = new RaftStateContext(factory);
+    private final State candidate = mock(State.class);
 
-  @Before
-  public void setup() {
-    when(factory.makeState(START)).thenReturn(start);
-    when(factory.makeState(FOLLOWER)).thenReturn(follower);
-  }
+    private final StateTransitionListener transitionListener = mock(StateTransitionListener.class);
 
-  @Test
-  public void notifiesSuccessfulStateTransitionFromNullToStartToRegisteredListener() throws Exception {
-    context.addTransitionListener(transitionListener);
+    private final RaftStateContext context = new RaftStateContext(factory);
 
-    context.setState(null, START);
-
-    verify(transitionListener).changeState(context, null, START);
-  }
-
-  @Test
-  public void throwsExceptionAndNotifiesInvalidTransitionToRegisteredListenerGivenUnexpectedPreviousState() throws Exception {
-    when(candidate.type()).thenReturn(CANDIDATE);
-    context.addTransitionListener(transitionListener);
-
-    context.setState(null, START);
-
-    try {
-      context.setState(candidate, LEADER);
-    } catch (IllegalStateException e) {
-      verify(transitionListener).invalidTransition(context, START, CANDIDATE);
+    @Before
+    public void setup() {
+        when(factory.makeState(START)).thenReturn(start);
+        when(factory.makeState(FOLLOWER)).thenReturn(follower);
     }
-  }
 
-  @Test
-  public void triggersInitOnNewStateWhenTransitioning() throws Exception {
-    context.setState(null, START);
+    @Test
+    public void notifiesSuccessfulStateTransitionFromNullToStartToRegisteredListener() throws Exception {
+        context.addTransitionListener(transitionListener);
+        context.setState(null, START);
+        verify(transitionListener).changeState(context, null, START);
+    }
 
-    verify(start).init(context);
-  }
+    @Test
+    public void throwsExceptionAndNotifiesInvalidTransitionToRegisteredListenerGivenUnexpectedPreviousState() throws Exception {
+        when(candidate.type()).thenReturn(CANDIDATE);
+        context.addTransitionListener(transitionListener);
+        context.setState(null, START);
+        try {
+            context.setState(candidate, LEADER);
+        } catch (IllegalStateException e) {
+            verify(transitionListener).invalidTransition(context, START, CANDIDATE);
+        }
+    }
 
-  @Test
-  public void delegatesAppendEntriesRequestToCurrentState() throws Exception {
-    RaftProto.AppendEntries appendEntries = RaftProto.AppendEntries.getDefaultInstance();
-    context.setState(null, FOLLOWER);
+    @Test
+    public void triggersInitOnNewStateWhenTransitioning() throws Exception {
+        context.setState(null, START);
+        verify(start).init(context);
+    }
 
-    context.appendEntries(appendEntries);
+    @Test
+    public void delegatesAppendEntriesRequestToCurrentState() throws Exception {
+        RaftProto.AppendEntries appendEntries = RaftProto.AppendEntries.getDefaultInstance();
+        context.setState(null, FOLLOWER);
+        context.appendEntries(appendEntries);
+        verify(follower).appendEntries(context, appendEntries);
+    }
 
-    verify(follower).appendEntries(context, appendEntries);
-  }
+    @Test
+    public void delegateRequestVoteToCurrentState() throws Exception {
+        RaftProto.RequestVote requestVote = RaftProto.RequestVote.getDefaultInstance();
+        context.setState(null, FOLLOWER);
+        context.requestVote(requestVote);
+        verify(follower).requestVote(context, requestVote);
+    }
 
-  @Test
-  public void delegateRequestVoteToCurrentState() throws Exception {
-    RaftProto.RequestVote requestVote = RaftProto.RequestVote.getDefaultInstance();
-    context.setState(null, FOLLOWER);
-
-    context.requestVote(requestVote);
-
-    verify(follower).requestVote(context, requestVote);
-  }
-
-  @Test
-  public void delegateCommitOperationToCurrentState() throws Exception {
-    byte[] bytes = new byte[]{1};
-    context.setState(null, FOLLOWER);
-
-    context.commitOperation(bytes);
-
-    verify(follower).commitOperation(context, bytes);
-  }
+    @Test
+    public void delegateCommitOperationToCurrentState() throws Exception {
+        byte[] bytes = new byte[] { 1 };
+        context.setState(null, FOLLOWER);
+        context.commitOperation(bytes);
+        verify(follower).commitOperation(context, bytes);
+    }
 }

@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.robotninjas.barge.state;
 
 import com.google.inject.PrivateModule;
@@ -21,28 +20,18 @@ import com.google.inject.assistedinject.FactoryModuleBuilder;
 
 public class StateModule extends PrivateModule {
 
-  private final long electionTimeout;
+    private final long electionTimeout;
 
-  public StateModule(long electionTimeout) {
-    this.electionTimeout = electionTimeout;
-  }
+    public StateModule(long electionTimeout) {
+        this.electionTimeout = electionTimeout;
+    }
 
-  @Override
-  protected void configure() {
-
-    bind(StateFactory.class).to(DefaultStateFactory.class);
-
-    install(new FactoryModuleBuilder()
-      .build(ReplicaManagerFactory.class));
-
-    bind(Long.class)
-      .annotatedWith(ElectionTimeout.class)
-      .toInstance(electionTimeout);
-
-    bind(RaftStateContext.class)
-      .asEagerSingleton();
-    expose(RaftStateContext.class);
-
-  }
-
+    @Override
+    protected void configure() {
+        bind(StateFactory.class).to(DefaultStateFactory.class);
+        install(new FactoryModuleBuilder().build(ReplicaManagerFactory.class));
+        bind(Long.class).annotatedWith(ElectionTimeout.class).toInstance(electionTimeout);
+        bind(Raft.class).to(RaftStateContext.class).asEagerSingleton();
+        expose(Raft.class);
+    }
 }
